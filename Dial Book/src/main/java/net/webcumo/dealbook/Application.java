@@ -13,7 +13,7 @@ public class Application {
         if (args.length > 0) {
             ordersXml = args[0];
         } else {
-            ordersXml = "./sample-data/orders.xml";
+            ordersXml = "./sample-data/orders-min.xml";
         }
         OrdersProcessor processor = new OrdersProcessor();
         XMLOrdersReader reader = new XMLOrdersReader(processor);
