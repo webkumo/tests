@@ -58,9 +58,7 @@ public class MatchedEntry {
     }
 
     private void restore(MatchedEntry entry, Integer volume) {
-        synchronized (matchedValues) {
-            matchedValues.remove(entry);
-        }
+        matchedValues.remove(entry);
         currentVolume.addAndGet(volume);
     }
 
@@ -68,9 +66,7 @@ public class MatchedEntry {
         boolean successfulSet = currentVolume.compareAndSet(volume, 0);
         if (successfulSet) {
             if (entry.setVolume(matchedVolume, diff, volume, this)) {
-                synchronized (matchedValues) {
-                    matchedValues.put(entry, diff);
-                }
+                matchedValues.put(entry, volume);
             } else {
                 currentVolume.addAndGet(volume);
                 successfulSet = false;
