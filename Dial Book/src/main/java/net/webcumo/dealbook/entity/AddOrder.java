@@ -1,9 +1,9 @@
 package net.webcumo.dealbook.entity;
 
 public class AddOrder extends OrderWithId {
-    private Integer price;
-    private Operation operation;
-    private int volume;
+    private final Integer price;
+    private final Operation operation;
+    private final int volume;
     private OrderBook book;
 
     public AddOrder(int id, String price, String operation, int volume) {
@@ -11,10 +11,6 @@ public class AddOrder extends OrderWithId {
         this.price = Integer.parseInt(price.trim().replace(".", ""));
         this.operation = Operation.valueOf(operation);
         this.volume = volume;
-    }
-
-    public boolean isAsk() {
-        return operation == Operation.SELL;
     }
 
     public void setBook(OrderBook book) {
@@ -28,5 +24,9 @@ public class AddOrder extends OrderWithId {
         } else {
             book.addBid(price, volume, getId());
         }
+    }
+
+    private boolean isAsk() {
+        return operation == Operation.SELL;
     }
 }

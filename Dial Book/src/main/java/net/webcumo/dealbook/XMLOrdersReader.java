@@ -5,7 +5,7 @@ import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
-public class XMLOrdersReader extends DefaultHandler {
+class XMLOrdersReader extends DefaultHandler {
     private final OrdersProcessor processor;
 
     public XMLOrdersReader(OrdersProcessor processor) {

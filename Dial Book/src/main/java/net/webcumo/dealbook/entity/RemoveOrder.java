@@ -19,14 +19,9 @@ public class RemoveOrder extends OrderWithId {
         if (entry == null) {
             return;
         }
-        if (entry.getOperation() == Operation.BUY) {
-            entry.getMatchedValues().forEach(
-                    (price, volume) -> consumer.accept(new RestoreBid(price, volume, book))
-            );
-        } else {
-            entry.getMatchedValues().forEach(
-                    (price, volume) -> consumer.accept(new RestoreAsk(price, volume, book))
-            );
-        }
+        Consumer<MatchedEntry> bookRestore = entry.getOperation() == Operation.BUY ? book::restoreBid : book::restoreAsk;
+        entry.restoreMatchedVolumes().forEach(
+                matchedEntry -> consumer.accept(() -> bookRestore.accept(matchedEntry))
+        );
     }
 }

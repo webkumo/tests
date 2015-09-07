@@ -5,12 +5,13 @@ import net.webcumo.dealbook.entity.OrderBook;
 import net.webcumo.dealbook.entity.RemoveOrder;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.*;
 
-public class OrdersProcessor {
-    private HashMap<String, OrderBook> book = new HashMap<>();
-    private ExecutorService executor = Executors.newFixedThreadPool(10);
-    private long startTime = System.currentTimeMillis();
+class OrdersProcessor {
+    private final Map<String, OrderBook> book = new HashMap<>();
+    private final ExecutorService executor = Executors.newFixedThreadPool(10);
+    private final long startTime = System.currentTimeMillis();
 
     public void addOrder(String bookName, AddOrder order) {
         OrderBook orderBook = book.computeIfAbsent(bookName, name -> new OrderBook());
@@ -37,7 +38,7 @@ public class OrdersProcessor {
                 System.out.println("Order book: " + name);
                 System.out.println(book);
             });
-            System.out.println("Time elapsed: " + elapsed + " msec");
+            System.out.println("Time elapsed: " + elapsed + " ms");
         });
     }
 }

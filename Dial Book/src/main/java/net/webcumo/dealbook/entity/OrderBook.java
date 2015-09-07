@@ -1,14 +1,16 @@
 package net.webcumo.dealbook.entity;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentNavigableMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 public class OrderBook {
-    private final ConcurrentNavigableMap<Integer, AtomicInteger> bid;
-    private final ConcurrentNavigableMap<Integer, AtomicInteger> ask;
+    private final ConcurrentNavigableMap<Integer, Collection<MatchedEntry>> bid;
+    private final ConcurrentNavigableMap<Integer, Collection<MatchedEntry>> ask;
     private final MatchedEntry[] entries;
 
     public OrderBook() {
@@ -18,111 +20,53 @@ public class OrderBook {
     }
 
     public void addAsk(int price, int volume, int id) {
-        MatchedEntry matchedEntry = new MatchedEntry(Operation.SELL);
-        ConcurrentNavigableMap<Integer, AtomicInteger> tailBid = bid.tailMap(price);
-        volume = addEntry(volume, matchedEntry, tailBid);
-        AtomicInteger value = ask.computeIfAbsent(price, key -> new AtomicInteger());
-        value.addAndGet(volume);
+        MatchedEntry matchedEntry = new MatchedEntry(Operation.SELL, volume, price);
+        Collection<Collection<MatchedEntry>> tailBid = bid.tailMap(price).values();
+        matchEntry(matchedEntry, tailBid);
+        Collection<MatchedEntry> value = ask.computeIfAbsent(price, key -> new CopyOnWriteArrayList<>());
+        value.add(matchedEntry);
         entries[id] = matchedEntry;
     }
 
     public void addBid(int price, int volume, int id) {
-        MatchedEntry matchedEntry = new MatchedEntry(Operation.BUY);
-        ConcurrentNavigableMap<Integer, AtomicInteger> tailAsk = ask.tailMap(price);
-        volume = addEntry(volume, matchedEntry, tailAsk);
-        AtomicInteger value = bid.computeIfAbsent(price, key -> new AtomicInteger());
-        value.addAndGet(volume);
+        MatchedEntry matchedEntry = new MatchedEntry(Operation.BUY, volume, price);
+        Collection<Collection<MatchedEntry>> tailAsk = ask.tailMap(price).values();
+        matchEntry(matchedEntry, tailAsk);
+        Collection<MatchedEntry> value = bid.computeIfAbsent(price, key -> new CopyOnWriteArrayList<>());
+        value.add(matchedEntry);
         entries[id] = matchedEntry;
     }
 
-    public void restoreAsk(Integer price, int volume) {
-        volume = restoreValue(volume, bid.tailMap(price));
-        ask.get(price).addAndGet(volume);
+    public void restoreAsk(MatchedEntry entry) {
+        Collection<Collection<MatchedEntry>> tailBid = bid.tailMap(entry.getPrice()).values();
+        matchEntry(entry, tailBid);
     }
 
-    public void restoreBid(Integer price, int volume) {
-        volume = restoreValue(volume, ask.tailMap(price));
-        bid.get(price).addAndGet(volume);
+    public void restoreBid(MatchedEntry entry) {
+        Collection<Collection<MatchedEntry>> tailBid = ask.tailMap(entry.getPrice()).values();
+        matchEntry(entry, tailBid);
     }
 
     public MatchedEntry remove(int id) {
         MatchedEntry entry = entries[id];
         if (entry != null) {
-            entries[id] = null;
+            if (entry.getOperation() == Operation.BUY) {
+                bid.get(entry.getPrice()).remove(entry);
+            } else {
+                ask.get(entry.getPrice()).remove(entry);
+            }
         }
         return entry;
     }
 
-    private int addEntry(int volume, MatchedEntry matched, ConcurrentNavigableMap<Integer, AtomicInteger> tail) {
-        for (Map.Entry<Integer, AtomicInteger> entry: tail.entrySet()) {
-            AtomicInteger i = entry.getValue();
-            Integer price = entry.getKey();
-            boolean successfulSet = false;
-            while (!successfulSet) {
-                int c = i.get();
-                if (c == 0) {
-                    successfulSet = true;
-                    continue;
-                }
-                int diff = c - volume;
-                if (diff >= 0) {
-                    successfulSet = i.compareAndSet(c, diff);
-                    if (successfulSet) {
-                        matched.put(price, volume);
-                        volume = 0;
-                    }
-                } else {
-                    successfulSet = i.compareAndSet(c, 0);
-                    if (successfulSet) {
-                        matched.put(price, c);
-                        volume = -diff;
-                    }
-                }
-            }
-            if (volume == 0) {
-                break;
-            }
-        }
-        return volume;
-    }
-
-    private int restoreValue(int volume, ConcurrentNavigableMap<Integer, AtomicInteger> tail) {
-        for (AtomicInteger i: tail.values()) {
-            boolean successfulSet = false;
-            while (!successfulSet) {
-                int c = i.get();
-                if (c == 0) {
-                    successfulSet = true;
-                    continue;
-                }
-                int diff = c - volume;
-                if (diff >= 0) {
-                    successfulSet = i.compareAndSet(c, diff);
-                    if (successfulSet) {
-                        volume = 0;
-                    }
-                } else {
-                    successfulSet = i.compareAndSet(c, 0);
-                    if (successfulSet) {
-                        volume = -diff;
-                    }
-                }
-            }
-            if (volume == 0) {
-                break;
-            }
-        }
-        return volume;
-    }
-
     @Override
     public String toString() {
-        Iterator<Map.Entry<Integer, AtomicInteger>> bidIterator = bid.descendingMap().entrySet().iterator();
-        Iterator<Map.Entry<Integer, AtomicInteger>> askIterator = ask.descendingMap().entrySet().iterator();
+        Iterator<Map.Entry<Integer, Collection<MatchedEntry>>> bidIterator = bid.descendingMap().entrySet().iterator();
+        Iterator<Map.Entry<Integer, Collection<MatchedEntry>>> askIterator = ask.descendingMap().entrySet().iterator();
 
-        StringBuilder sb = new StringBuilder("BID\t\t\t\t\tASK\nVolume@Price\t–\tVolume@Price\n");
-        Map.Entry<Integer, AtomicInteger> bidEntry = null;
-        Map.Entry<Integer, AtomicInteger> askEntry = null;
+        StringBuilder sb = new StringBuilder("BID\t\t\t\t\tASK\nVolume@Price\t-\tVolume@Price\n");
+        Map.Entry<Integer, Collection<MatchedEntry>> bidEntry = null;
+        Map.Entry<Integer, Collection<MatchedEntry>> askEntry = null;
         while (askIterator.hasNext() || bidIterator.hasNext()) {
             if (bidIterator.hasNext() &&
                     (bidEntry == null || !hasVolume(bidEntry))) {
@@ -137,12 +81,12 @@ public class OrderBook {
                 continue;
             }
             if (hasVolume(bidEntry)) {
-                appendEntry(sb, bidEntry, "\t\t\t");
+                appendEntry(sb, bidEntry.getKey(), volume(bidEntry.getValue()), "\t\t\t");
             } else {
                 sb.append("\t\t\t\t\t\t");
             }
             if (hasVolume(askEntry)) {
-                appendEntry(sb, askEntry, "\n");
+                appendEntry(sb, askEntry.getKey(), volume(askEntry.getValue()), "\n");
             } else {
                 sb.append("\n");
             }
@@ -152,19 +96,34 @@ public class OrderBook {
         return sb.toString();
     }
 
-    private boolean hasVolume(Map.Entry<Integer, AtomicInteger> entry) {
-        return entry != null && entry.getValue().get() > 0;
+    private void matchEntry(MatchedEntry matched, Collection<Collection<MatchedEntry>> tail) {
+        Iterator<MatchedEntry> iterator = tail.stream().flatMap(Collection::stream).iterator();
+        while(iterator.hasNext()) {
+            MatchedEntry entry = iterator.next();
+            entry.matchEntry(matched);
+            if (matched.getVolume() == 0) {
+                break;
+            }
+        }
     }
 
-    private void appendEntry(StringBuilder sb, Map.Entry<Integer, AtomicInteger> entry, String str) {
-        int volume = entry.getValue().get();
-        int priceInt = entry.getKey();
-        int remainder = priceInt % 100;
-        priceInt /= 100;
-        sb.append(volume).append('@').append(priceInt).append('.').append(remainder);
-        if (remainder == 0) {
+    private boolean hasVolume(Map.Entry<Integer, Collection<MatchedEntry>> entry) {
+        return entry != null &&
+                0 < volume(entry.getValue());
+    }
+
+    private int volume(Collection<MatchedEntry> entries) {
+        return entries.stream().collect(Collectors.summingInt(MatchedEntry::getVolume));
+    }
+
+    private void appendEntry(StringBuilder sb, Integer price, int volume, String str) {
+        int remainder = price % 100;
+        price /= 100;
+        sb.append(volume).append('@').append(price).append('.');
+        if (remainder < 10) {
             sb.append('0');
         }
+        sb.append(remainder);
         sb.append(str);
     }
 }

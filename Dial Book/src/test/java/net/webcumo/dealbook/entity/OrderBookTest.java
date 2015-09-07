@@ -30,8 +30,8 @@ public class OrderBookTest {
         book.addBid(105, 4, 2);
         Executor executor = Executors.newSingleThreadExecutor();
         new RemoveOrder(book, 1, executor::execute).run();
-        System.err.println(book);
-        assertTrue("Found not expected value", !book.toString().contains("\t6@1.00"));
-        assertTrue("Not found expected value", book.toString().contains("4@1.05"));
+        String bookToString = book.toString();
+        assertTrue("Found not expected value", !bookToString.contains("\t6@1.00"));
+        assertTrue("Not found expected value", bookToString.contains("4@1.05"));
     }
 }
