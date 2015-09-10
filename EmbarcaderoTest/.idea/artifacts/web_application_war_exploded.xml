@@ -1,0 +1,22 @@
+<component name="ArtifactManager">
+  <artifact type="exploded-war" name="web-application:war exploded">
+    <output-path>$PROJECT_DIR$/web-application/target/web-application-1.0-SNAPSHOT</output-path>
+    <root id="root">
+      <element id="directory" name="WEB-INF">
+        <element id="directory" name="classes">
+          <element id="module-output" name="user-list" />
+        </element>
+        <element id="directory" name="lib">
+          <element id="archive" name="external-interfaces-1.0-SNAPSHOT.jar">
+            <element id="module-output" name="external-interfaces" />
+          </element>
+          <element id="library" level="project" name="Maven: com.h2database:h2:1.4.182" />
+        </element>
+      </element>
+      <element id="directory" name="META-INF">
+        <element id="file-copy" path="$PROJECT_DIR$/user-list/target/web-application-1.0-SNAPSHOT/META-INF/MANIFEST.MF" />
+      </element>
+      <element id="javaee-facet-resources" facet="user-list/web/Web" />
+    </root>
+  </artifact>
+</component>

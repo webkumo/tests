@@ -1,0 +1,5 @@
+Steve, Jones, 11/30/1983, sjones, password1, true
+Dave, Smith, 3/3/1993, dsmith, smithsmith, true
+Mary, McIntyre, 7/21/1991, marym, 55apple77, true
+Jill, Wild, 1/12/1988, jwild, jw123456, false
+John,Johnson,12/31/2001,jjohnson,fifty!50,true
